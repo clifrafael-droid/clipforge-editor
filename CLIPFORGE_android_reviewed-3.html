@@ -1,0 +1,1217 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<meta name="theme-color" content="#0a0a0f">
+<title>CLIPFORGE — Auto Streamer Clip Editor</title>
+<link rel="manifest" href='data:application/manifest+json,{"name":"CLIPFORGE","short_name":"CLIPFORGE","start_url":".","display":"standalone","orientation":"portrait","background_color":"%230a0a0f","theme_color":"%230a0a0f"}'>
+<style>
+:root {
+  --bg:#0a0a0f; --surface:#14141f; --surface-2:#1e1e2e; --border:#2a2a3a;
+  --text:#e8e8f0; --text-dim:#8888a0; --accent:#7c5cfc; --accent-2:#a78bfa;
+  --green:#22c55e; --red:#ef4444; --radius:12px; --safe-bottom:env(safe-area-inset-bottom, 0px);
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--bg);color:var(--text);font-family:system-ui,-apple-system,'Segoe UI',Roboto,sans-serif;-webkit-tap-highlight-color:transparent;overscroll-behavior:none}
+.screen{display:none;min-height:100dvh;padding-bottom:80px}
+.screen.active{display:block}
+.top-bar{display:flex;align-items:center;gap:12px;padding:16px;position:sticky;top:0;z-index:10;background:rgba(10,10,15,.92);backdrop-filter:blur(12px);border-bottom:1px solid var(--border)}
+.top-bar h1,.top-bar h2{font-size:18px;flex:1}
+.badge{font-size:10px;background:var(--surface-2);color:var(--accent-2);padding:3px 8px;border-radius:20px;font-weight:600}
+.hero-actions{display:flex;flex-direction:column;gap:12px;padding:20px 16px}
+.btn{display:inline-flex;align-items:center;justify-content:center;padding:12px 20px;border-radius:var(--radius);border:none;font-size:15px;font-weight:600;cursor:pointer;transition:transform .1s,opacity .2s}
+.btn:active{transform:scale(.97)}
+.btn-primary{background:linear-gradient(135deg,var(--accent),var(--accent-2));color:#fff}
+.btn-secondary{background:var(--surface-2);color:var(--text);border:1px solid var(--border)}
+.btn-lg{padding:18px;font-size:17px}
+.btn-sm{padding:8px 14px;font-size:13px;background:var(--surface-2);color:var(--text);border:1px solid var(--border)}
+.stats-row{display:flex;gap:10px;padding:0 16px 16px}
+.stat-card{flex:1;background:var(--surface);border-radius:var(--radius);padding:14px;text-align:center;border:1px solid var(--border)}
+.stat-num{display:block;font-size:24px;font-weight:700;color:var(--accent-2)}
+.section-title{font-size:14px;color:var(--text-dim);padding:16px 16px 8px;text-transform:uppercase;letter-spacing:.5px}
+.project-list{padding:0 16px;display:flex;flex-direction:column;gap:8px}
+.project-item{background:var(--surface);border-radius:var(--radius);padding:14px;border:1px solid var(--border);display:flex;align-items:center;gap:12px}
+.project-thumb{width:48px;height:64px;border-radius:6px;background:var(--surface-2);display:flex;align-items:center;justify-content:center;font-size:20px}
+.project-info{flex:1;overflow:hidden}
+.project-info h3{font-size:14px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.project-info p{font-size:12px;color:var(--text-dim);margin-top:2px}
+.status-pill{font-size:10px;padding:3px 8px;border-radius:20px;font-weight:600}
+.status-queued{background:#2a2a3a;color:var(--text-dim)}
+.status-processing{background:#3b2a6a;color:var(--accent-2)}
+.status-done{background:#14351f;color:var(--green)}
+.status-failed{background:#3b1a1a;color:var(--red)}
+.bottom-nav{position:fixed;bottom:0;left:0;right:0;display:flex;background:var(--surface);border-top:1px solid var(--border);padding-bottom:var(--safe-bottom);z-index:20}
+.nav-btn{flex:1;padding:14px;background:none;border:none;color:var(--text-dim);font-size:13px;font-weight:600;cursor:pointer}
+.nav-btn.active{color:var(--accent-2)}
+.preview-wrap{padding:12px}
+#previewCanvas{width:100%;aspect-ratio:9/16;background:#000;border-radius:var(--radius);display:block;object-fit:contain}
+.preview-controls{display:flex;align-items:center;gap:10px;padding:10px 0}
+.icon-btn{background:var(--surface-2);border:1px solid var(--border);color:var(--text);width:40px;height:40px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:16px;cursor:pointer;flex-shrink:0}
+.seek-slider{flex:1;accent-color:var(--accent)}
+.progress-section{padding:0 16px}
+.progress-bar{height:6px;background:var(--surface-2);border-radius:3px;overflow:hidden}
+.progress-fill{height:100%;width:0%;background:linear-gradient(90deg,var(--accent),var(--accent-2));transition:width .2s}
+#progressLabel{font-size:12px;color:var(--text-dim);margin-top:6px;min-height:16px}
+.timeline{margin:12px 16px;height:40px;background:var(--surface);border-radius:8px;border:1px solid var(--border);position:relative;overflow:hidden}
+.timeline-segment{position:absolute;top:0;bottom:0;background:var(--accent);opacity:.3}
+.editor-actions{display:flex;gap:8px;padding:0 16px 12px;flex-wrap:wrap}
+.sfx-controls{padding:12px 16px;display:flex;gap:16px;flex-wrap:wrap}
+.sfx-controls label{font-size:12px;color:var(--text-dim);display:flex;flex-direction:column;gap:4px}
+.sfx-controls input[type="range"]{width:120px;accent-color:var(--accent)}
+.sfx-controls select,.settings-form select{background:var(--surface-2);color:var(--text);border:1px solid var(--border);padding:8px;border-radius:8px}
+.settings-form{padding:16px;display:flex;flex-direction:column;gap:14px}
+.toggle-row,.select-row{display:flex;justify-content:space-between;align-items:center;font-size:15px;background:var(--surface);padding:14px;border-radius:var(--radius);border:1px solid var(--border)}
+.toggle-row input[type="checkbox"]{width:22px;height:22px;accent-color:var(--accent)}
+.hint{font-size:12px;color:var(--text-dim);padding:12px 16px}
+.toast{position:fixed;bottom:90px;left:50%;transform:translateX(-50%) translateY(20px);background:var(--surface-2);color:var(--text);padding:12px 20px;border-radius:20px;font-size:13px;opacity:0;pointer-events:none;transition:.3s;z-index:100;border:1px solid var(--border);max-width:90vw;text-align:center}
+.toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+.notice{background:#2a1f1f;border:1px solid #5a2a2a;color:#ffb4b4;padding:12px 16px;border-radius:var(--radius);font-size:13px;margin:12px 16px}
+.notice a{color:var(--accent-2)}
+</style>
+</head>
+<body>
+<div id="app">
+
+  <!-- Dashboard -->
+  <section id="dashboard" class="screen active">
+    <header class="top-bar">
+      <h1>⚡ CLIPFORGE</h1>
+      <span class="badge">LOCAL · FREE</span>
+    </header>
+    <div id="envNotice"></div>
+    <div class="hero-actions">
+      <label class="btn btn-primary btn-lg" for="fileInput">
+        📁 Import Videos
+        <input type="file" id="fileInput" accept="video/*" multiple hidden>
+      </label>
+      <button class="btn btn-secondary btn-lg" id="batchBtn">📦 Batch Processing</button>
+    </div>
+    <div class="stats-row">
+      <div class="stat-card"><span class="stat-num" id="statQueue">0</span><span>Queued</span></div>
+      <div class="stat-card"><span class="stat-num" id="statDone">0</span><span>Done</span></div>
+      <div class="stat-card"><span class="stat-num" id="statFail">0</span><span>Failed</span></div>
+    </div>
+    <h2 class="section-title">Recent Projects</h2>
+    <div id="recentList" class="project-list"></div>
+    <h2 class="section-title">Exported Videos</h2>
+    <div id="exportList" class="project-list"></div>
+    <nav class="bottom-nav">
+      <button class="nav-btn active" data-screen="dashboard">🏠 Home</button>
+      <button class="nav-btn" data-screen="settings">⚙️ Settings</button>
+    </nav>
+  </section>
+
+  <!-- Editor -->
+  <section id="editor" class="screen">
+    <header class="top-bar">
+      <button class="icon-btn" id="backBtn">←</button>
+      <h2 id="editorTitle">Editing…</h2>
+      <button class="icon-btn" id="exportBtn">⬇️</button>
+    </header>
+    <div class="preview-wrap">
+      <canvas id="previewCanvas" width="1080" height="1920"></canvas>
+      <div class="preview-controls">
+        <button class="icon-btn" id="playPauseBtn">▶️</button>
+        <input type="range" id="seekBar" min="0" max="1000" value="0" class="seek-slider">
+        <span id="timeLabel">0:00</span>
+      </div>
+    </div>
+    <div class="progress-section">
+      <div class="progress-bar"><div class="progress-fill" id="progressFill"></div></div>
+      <p id="progressLabel">Ready</p>
+    </div>
+    <div class="timeline" id="timeline"></div>
+    <div class="editor-actions">
+      <button class="btn btn-sm" id="compareBtn" disabled title="Not implemented">👁️ Compare (unavailable)</button>
+      <button class="btn btn-sm" id="undoBtn" disabled title="Not implemented">↩️ Undo (unavailable)</button>
+      <button class="btn btn-sm" id="redoBtn" disabled title="Not implemented">↪️ Redo (unavailable)</button>
+    </div>
+    <div class="sfx-controls">
+      <label>SFX Volume <input type="range" id="sfxVol" min="0" max="100" value="70"></label>
+      <label>Intensity
+        <select id="intensitySel">
+          <option value="subtle">Subtle</option>
+          <option value="balanced" selected>Balanced</option>
+          <option value="chaotic">Chaotic</option>
+        </select>
+      </label>
+    </div>
+  </section>
+
+  <!-- Settings -->
+  <section id="settings" class="screen">
+    <header class="top-bar">
+      <button class="icon-btn" id="backFromSettings">←</button>
+      <h1>Settings</h1>
+    </header>
+    <div class="settings-form">
+      <label class="toggle-row">Dead Space Removal <input type="checkbox" id="setDeadSpace" checked></label>
+      <label class="toggle-row">Dynamic Zoom <input type="checkbox" id="setZoom" checked></label>
+      <label class="toggle-row">Auto Reframing <input type="checkbox" id="setReframe" checked></label>
+      <label class="toggle-row">Sound Effects <input type="checkbox" id="setSfx" checked></label>
+      <label class="toggle-row">Audio Enhancement <input type="checkbox" id="setAudioEnh" checked></label>
+      <label class="toggle-row">Subtitles (not implemented) <input type="checkbox" id="setSubs" disabled></label>
+      <label class="select-row">SFX Intensity
+        <select id="setIntensity">
+          <option value="subtle">Subtle</option>
+          <option value="balanced" selected>Balanced</option>
+          <option value="chaotic">Chaotic</option>
+        </select>
+      </label>
+      <label class="select-row">Output Resolution
+        <select id="setResolution">
+          <option value="1080">1080 × 1920</option>
+          <option value="720">720 × 1280</option>
+        </select>
+      </label>
+    </div>
+    <button class="btn btn-primary" id="saveSettings" style="margin:0 16px">Save Settings</button>
+    <p class="hint">Settings are stored locally and remembered between sessions.</p>
+    <nav class="bottom-nav">
+      <button class="nav-btn" data-screen="dashboard">🏠 Home</button>
+      <button class="nav-btn active" data-screen="settings">⚙️ Settings</button>
+    </nav>
+  </section>
+
+  <div id="toast" class="toast"></div>
+</div>
+
+<script type="module">
+/* ═══════════════════════════════════════════════════════════════════════════
+   CLIPFORGE — Single-file build
+   Requires HTTPS or localhost. Everything else is local.
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+// ─── Environment check ──────────────────────────────────────────────────────
+const hasWebCodecs = 'VideoEncoder' in window && 'VideoFrame' in window;
+const isSecure = location.protocol === 'https:' || location.hostname === 'localhost' || location.hostname === '127.0.0.1';
+
+if (!hasWebCodecs || !isSecure) {
+  const notice = document.getElementById('envNotice');
+  notice.innerHTML = `<div class="notice">
+    ⚠️ <b>WebCodecs unavailable.</b>
+    ${!isSecure ? 'Serve this file over <b>HTTPS</b> or <b>localhost</b>. ' : ''}
+    ${!hasWebCodecs ? 'Your browser must support WebCodecs (Chrome 94+). ' : ''}
+    Video import and preview will still work, but export requires it.
+  </div>`;
+}
+
+// ─── Imports from mediabunny (CDN) ──────────────────────────────────────────
+let MB;
+try {
+  MB = await import('https://cdn.jsdelivr.net/npm/mediabunny@1.0.0/+esm');
+  console.log('Mediabunny loaded:', Object.keys(MB).slice(0, 10), '…');
+} catch (e) {
+  console.error('Mediabunny load failed:', e);
+  document.body.insertAdjacentHTML('afterbegin',
+    `<div class="notice">⚠️ Failed to load video engine (mediabunny). Check your internet connection. The app shell works, but processing requires the CDN.</div>`);
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   STORAGE
+   ═══════════════════════════════════════════════════════════════════════════ */
+const SETTINGS_KEY = 'clipforge_settings_v1';
+const RESULT_DB = 'clipforge_results';
+const RESULT_STORE = 'results';
+
+class Storage {
+  constructor() { this.db = null; this._initDB().catch(()=>{}); }
+
+  _initDB() {
+    return new Promise((resolve, reject) => {
+      const req = indexedDB.open(RESULT_DB, 1);
+      req.onupgradeneeded = () => {
+        const db = req.result;
+        if (!db.objectStoreNames.contains(RESULT_STORE)) db.createObjectStore(RESULT_STORE, { keyPath: 'id' });
+      };
+      req.onsuccess = () => { this.db = req.result; resolve(); };
+      req.onerror = () => reject(req.error);
+    });
+  }
+
+  defaults() {
+    return {
+      editingStyle: 'streamer',
+      deadSpaceRemoval: true, dynamicZoom: true, autoReframe: true,
+      soundEffects: true, sfxIntensity: 'balanced', sfxVolume: 0.7, audioEnhancement: true,
+      subtitles: false, bRoll: false, backgroundMusic: false,
+      transitions: 'minimal', aspectRatio: '9:16', resolution: 1080,
+    };
+  }
+
+  loadSettings() {
+    try {
+      const raw = localStorage.getItem(SETTINGS_KEY);
+      if (raw) return { ...this.defaults(), ...JSON.parse(raw) };
+    } catch(_) {}
+    return this.defaults();
+  }
+
+  saveSettings(s) {
+    try { localStorage.setItem(SETTINGS_KEY, JSON.stringify(s)); } catch(_) {}
+  }
+
+  async saveResult(id, blob, name) {
+    if (!this.db) await this._initDB();
+    return new Promise((res, rej) => {
+      const tx = this.db.transaction(RESULT_STORE, 'readwrite');
+      tx.objectStore(RESULT_STORE).put({ id, blob, name, createdAt: Date.now() });
+      tx.oncomplete = res; tx.onerror = () => rej(tx.error);
+    });
+  }
+
+  async listResults() {
+    if (!this.db) await this._initDB();
+    return new Promise((res, rej) => {
+      const tx = this.db.transaction(RESULT_STORE, 'readonly');
+      const req = tx.objectStore(RESULT_STORE).getAll();
+      req.onsuccess = () => res(req.result || []);
+      req.onerror = () => rej(req.error);
+    });
+  }
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   AUDIO ANALYSER
+   ═══════════════════════════════════════════════════════════════════════════ */
+class AudioAnalyzer {
+  constructor(audioBuffer, windowMs = 50) {
+    this.buffer = audioBuffer;
+    this.sampleRate = audioBuffer.sampleRate;
+    this.duration = audioBuffer.duration;
+    this.windowMs = windowMs;
+    this.windowSize = Math.floor((windowMs / 1000) * this.sampleRate);
+    this.hopSize = this.windowSize;
+  }
+
+  computeRMS() {
+    const mono = this._downmixToMono();
+    const rms = [];
+    for (let i = 0; i + this.windowSize <= mono.length; i += this.hopSize) {
+      let sum = 0;
+      for (let j = 0; j < this.windowSize; j++) { const s = mono[i+j]; sum += s*s; }
+      rms.push(Math.sqrt(sum / this.windowSize));
+    }
+    return rms;
+  }
+
+  detectSpeechSegments({ silenceThreshold = 0.015, minSilenceMs = 800, paddingMs = 100 } = {}) {
+    const rms = this.computeRMS();
+    const minSilenceWindows = Math.ceil(minSilenceMs / this.windowMs);
+    const paddingWindows = Math.ceil(paddingMs / this.windowMs);
+    const active = rms.map(v => v > silenceThreshold);
+
+    const segments = []; let start = -1;
+    for (let i = 0; i < active.length; i++) {
+      if (active[i] && start === -1) start = i;
+      if (!active[i] && start !== -1) { segments.push({ start, end: i }); start = -1; }
+    }
+    if (start !== -1) segments.push({ start, end: active.length });
+
+    const merged = [];
+    for (const seg of segments) {
+      if (merged.length && seg.start - merged[merged.length-1].end < minSilenceWindows) {
+        merged[merged.length-1].end = seg.end;
+      } else merged.push({ ...seg });
+    }
+
+    return merged.map((seg, i) => {
+      const prevEnd = i > 0 ? merged[i-1].end : 0;
+      const nextStart = i < merged.length - 1 ? merged[i+1].start : active.length;
+      const ps = Math.max(seg.start - paddingWindows, prevEnd);
+      const pe = Math.min(seg.end + paddingWindows, nextStart);
+      return { start: ps * this.windowMs / 1000, end: pe * this.windowMs / 1000 };
+    });
+  }
+
+  findPeaks({ minProminence = 0.02, minDistanceMs = 400, maxCount = 12 } = {}) {
+    const rms = this.computeRMS();
+    const peaks = [];
+    for (let i = 1; i < rms.length - 1; i++) {
+      if (rms[i] > rms[i-1] && rms[i] > rms[i+1] && rms[i] > minProminence) {
+        const time = i * this.windowMs / 1000;
+        if (!peaks.length || time - peaks[peaks.length-1] >= minDistanceMs / 1000) peaks.push(time);
+      }
+    }
+    peaks.sort((a,b) => {
+      const ra = rms[Math.floor(a*1000/this.windowMs)] || 0;
+      const rb = rms[Math.floor(b*1000/this.windowMs)] || 0;
+      return rb - ra;
+    });
+    return peaks.slice(0, maxCount).sort((a,b) => a-b);
+  }
+
+  _downmixToMono() {
+    const ch = this.buffer.numberOfChannels;
+    const len = this.buffer.length;
+    if (ch === 1) return this.buffer.getChannelData(0).slice();
+    const mono = new Float32Array(len);
+    const chs = []; for (let c = 0; c < ch; c++) chs.push(this.buffer.getChannelData(c));
+    for (let i = 0; i < len; i++) { let s = 0; for (let c = 0; c < ch; c++) s += chs[c][i]; mono[i] = s / ch; }
+    return mono;
+  }
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   PROCEDURAL SOUND EFFECTS
+   ═══════════════════════════════════════════════════════════════════════════ */
+class SFXSynth {
+  constructor(sampleRate = 44100) { this.sampleRate = sampleRate; }
+
+  async boom({ duration=0.45, startFreq=90, endFreq=30, gain=0.6 }={}) {
+    const ctx = new OfflineAudioContext(1, this.sampleRate*duration, this.sampleRate);
+    const o = ctx.createOscillator(), g = ctx.createGain();
+    o.type = 'sine';
+    o.frequency.setValueAtTime(startFreq, 0);
+    o.frequency.exponentialRampToValueAtTime(endFreq, duration);
+    g.gain.setValueAtTime(gain, 0);
+    g.gain.exponentialRampToValueAtTime(0.001, duration);
+    o.connect(g).connect(ctx.destination); o.start(0); o.stop(duration);
+    return ctx.startRendering();
+  }
+  async pop({ duration=0.12, freq=600, gain=0.5 }={}) {
+    const ctx = new OfflineAudioContext(1, this.sampleRate*duration, this.sampleRate);
+    const o = ctx.createOscillator(), g = ctx.createGain();
+    o.type = 'sine';
+    o.frequency.setValueAtTime(freq, 0);
+    o.frequency.exponentialRampToValueAtTime(freq*2.5, duration*0.5);
+    o.frequency.exponentialRampToValueAtTime(freq*1.2, duration);
+    g.gain.setValueAtTime(gain, 0);
+    g.gain.linearRampToValueAtTime(gain, 0.005);
+    g.gain.exponentialRampToValueAtTime(0.001, duration);
+    o.connect(g).connect(ctx.destination); o.start(0); o.stop(duration);
+    return ctx.startRendering();
+  }
+  async whoosh({ duration=0.4, gain=0.35 }={}) {
+    const ctx = new OfflineAudioContext(1, this.sampleRate*duration, this.sampleRate);
+    const buf = ctx.createBuffer(1, ctx.length, ctx.sampleRate);
+    const d = buf.getChannelData(0); let last = 0;
+    for (let i = 0; i < d.length; i++) {
+      const w = Math.random()*2 - 1; last = last*0.92 + w*0.08;
+      const t = i/d.length; d[i] = last * Math.sin(Math.PI*t) * gain;
+    }
+    const src = ctx.createBufferSource(); src.buffer = buf;
+    const f = ctx.createBiquadFilter(); f.type = 'bandpass';
+    f.frequency.setValueAtTime(300, 0);
+    f.frequency.exponentialRampToValueAtTime(3000, duration);
+    f.Q.value = 1.5;
+    src.connect(f).connect(ctx.destination); src.start(0);
+    return ctx.startRendering();
+  }
+  async riser({ duration=0.8, gain=0.3 }={}) {
+    const ctx = new OfflineAudioContext(1, this.sampleRate*duration, this.sampleRate);
+    const o = ctx.createOscillator(), g = ctx.createGain();
+    o.type = 'sawtooth';
+    o.frequency.setValueAtTime(100, 0);
+    o.frequency.exponentialRampToValueAtTime(1200, duration);
+    g.gain.setValueAtTime(0, 0);
+    g.gain.linearRampToValueAtTime(gain, duration*0.8);
+    g.gain.exponentialRampToValueAtTime(0.001, duration);
+    o.connect(g).connect(ctx.destination); o.start(0); o.stop(duration);
+    return ctx.startRendering();
+  }
+  async ding({ duration=0.3, freq=1200, gain=0.4 }={}) {
+    const ctx = new OfflineAudioContext(1, this.sampleRate*duration, this.sampleRate);
+    const o = ctx.createOscillator(), g = ctx.createGain();
+    o.type = 'sine';
+    o.frequency.setValueAtTime(freq, 0);
+    o.frequency.setValueAtTime(freq*1.5, 0.05);
+    g.gain.setValueAtTime(gain, 0);
+    g.gain.exponentialRampToValueAtTime(0.001, duration);
+    o.connect(g).connect(ctx.destination); o.start(0); o.stop(duration);
+    return ctx.startRendering();
+  }
+  async render(category) {
+    switch (category) {
+      case 'impact': return this.boom();
+      case 'pop': return this.pop();
+      case 'whoosh': return this.whoosh();
+      case 'riser': return this.riser();
+      case 'ding': return this.ding();
+      default: return this.pop();
+    }
+  }
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   FACE-AWARE REFRAMER (MediaPipe)
+   ═══════════════════════════════════════════════════════════════════════════ */
+class Reframer {
+  constructor() { this.detector = null; this.samples = []; this.ready = false; }
+
+  async init() {
+    try {
+      const vision = await import('https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.14');
+      const fileset = await vision.FilesetResolver.forVisionTasks(
+        'https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.14/wasm'
+      );
+      this.detector = await vision.FaceDetector.createFromOptions(fileset, {
+        baseOptions: {
+          modelAssetPath: 'https://storage.googleapis.com/mediapipe-models/face_detector/blaze_face_short_range/float16/1/blaze_face_short_range.tflite',
+          delegate: 'GPU',
+        },
+        runningMode: 'VIDEO',
+        minDetectionConfidence: 0.5,
+      });
+      this.ready = true;
+      return true;
+    } catch (e) {
+      console.warn('Face detector unavailable, using centre crop:', e);
+      this.ready = false;
+      return false;
+    }
+  }
+
+  async analyseVideo(video, timestamps, onProgress) {
+    if (!this.ready || !this.detector) return;
+    this.samples = [];
+    for (let i = 0; i < timestamps.length; i++) {
+      const t = timestamps[i];
+      try {
+        await this._seekVideo(video, t);
+        const result = this.detector.detectForVideo(video, performance.now());
+        if (result.detections && result.detections.length > 0) {
+          const box = result.detections[0].boundingBox;
+          this.samples.push({
+            time: t,
+            cx: (box.x + box.width/2) / video.videoWidth,
+            cy: (box.y + box.height/2) / video.videoHeight,
+            size: Math.max(box.width/video.videoWidth, box.height/video.videoHeight),
+          });
+        }
+      } catch (_) {}
+      if (onProgress && i % 5 === 0) onProgress(i / timestamps.length);
+    }
+    this.samples.sort((a,b) => a.time - b.time);
+  }
+
+  getCrop(time, srcW, srcH, targetAspect = 9/16) {
+    let cx = 0.5, cy = 0.5;
+    if (this.samples.length) {
+      const s = this._interpolate(time);
+      if (s) { cx = s.cx; cy = s.cy; }
+    }
+    let cropW, cropH;
+    if (srcW / srcH > targetAspect) { cropH = srcH; cropW = srcH * targetAspect; }
+    else { cropW = srcW; cropH = srcW / targetAspect; }
+    let x = cx * srcW - cropW/2, y = cy * srcH - cropH/2;
+    x = Math.max(0, Math.min(srcW - cropW, x));
+    y = Math.max(0, Math.min(srcH - cropH, y));
+    return { x, y, w: cropW, h: cropH };
+  }
+
+  _interpolate(time) {
+    const s = this.samples;
+    if (!s.length) return null;
+    if (time <= s[0].time) return s[0];
+    if (time >= s[s.length-1].time) return s[s.length-1];
+    for (let i = 0; i < s.length-1; i++) {
+      if (time >= s[i].time && time <= s[i+1].time) {
+        const t = (time - s[i].time) / ((s[i+1].time - s[i].time) || 1);
+        return {
+          cx: s[i].cx + (s[i+1].cx - s[i].cx) * t,
+          cy: s[i].cy + (s[i+1].cy - s[i].cy) * t,
+          size: s[i].size + (s[i+1].size - s[i].size) * t,
+        };
+      }
+    }
+    return s[s.length-1];
+  }
+
+  _seekVideo(video, time) {
+    return new Promise((resolve, reject) => {
+      const target = Math.max(0, Math.min(time, Math.max(0, video.duration - 0.01)));
+      if (Math.abs(video.currentTime - target) < 0.015 && video.readyState >= 2) {
+        resolve();
+        return;
+      }
+      let settled = false;
+      const finish = (error) => {
+        if (settled) return;
+        settled = true;
+        clearTimeout(timer);
+        video.removeEventListener('seeked', onSeeked);
+        video.removeEventListener('error', onError);
+        if (error) reject(error); else resolve();
+      };
+      const onSeeked = () => finish();
+      const onError = () => finish(new Error('Video seek failed during face analysis'));
+      const timer = setTimeout(() => finish(new Error('Video seek timed out during face analysis')), 10000);
+      video.addEventListener('seeked', onSeeked, { once: true });
+      video.addEventListener('error', onError, { once: true });
+      try { video.currentTime = target; }
+      catch (error) { finish(error); }
+    });
+  }
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   PIPELINE — decode, analyse, edit, encode
+   ═══════════════════════════════════════════════════════════════════════════ */
+class VideoPipeline {
+  constructor(app) { this.app = app; this.sfxSynth = new SFXSynth(); }
+
+  async processVideo(job, settings, onProgress) {
+    if (!MB) throw new Error('Video engine not loaded. Check internet connection.');
+    if (!hasWebCodecs) throw new Error('WebCodecs not available. Use HTTPS + Chrome 94+.');
+
+    const file = job.file;
+    onProgress(2, 'Opening file…');
+
+    const { Input, ALL_FORMATS, BlobSource, Output, Mp4OutputFormat, BufferTarget,
+            CanvasSource, AudioBufferSource, VideoSampleSink, AudioBufferSink } = MB;
+
+    const input = new Input({ source: new BlobSource(file), formats: ALL_FORMATS });
+    const videoTrack = await input.getPrimaryVideoTrack();
+    const audioTrack = await input.getPrimaryAudioTrack();
+    if (!videoTrack) throw new Error('No video track found.');
+
+    const duration = await videoTrack.computeDuration();
+    const srcW = videoTrack.displayWidth || videoTrack.codedWidth;
+    const srcH = videoTrack.displayHeight || videoTrack.codedHeight;
+    onProgress(5, `Source: ${srcW}×${srcH}, ${duration.toFixed(1)}s`);
+
+    // ── Extract audio ─────────────────────────────────────────────
+    let audioBuffer = null;
+    if (audioTrack) {
+      onProgress(8, 'Decoding audio…');
+      audioBuffer = await this._collectAudio(audioTrack, AudioBufferSink, duration);
+    }
+
+    // ── Analyse audio ─────────────────────────────────────────────
+    let speechSegments = [{ start: 0, end: duration }];
+    let peaks = [];
+    if (audioBuffer && settings.deadSpaceRemoval) {
+      onProgress(14, 'Removing dead space…');
+      const an = new AudioAnalyzer(audioBuffer);
+      speechSegments = an.detectSpeechSegments({ silenceThreshold: 0.012, minSilenceMs: 800, paddingMs: 120 });
+      const kept = speechSegments.reduce((s,x) => s + (x.end - x.start), 0);
+      if (kept < 1 || !speechSegments.length) speechSegments = [{ start: 0, end: duration }];
+    }
+
+    if (audioBuffer && settings.soundEffects) {
+      onProgress(18, 'Finding highlight moments…');
+      const an = new AudioAnalyzer(audioBuffer);
+      peaks = an.findPeaks({
+        minProminence: settings.sfxIntensity === 'subtle' ? 0.03 : 0.02,
+        minDistanceMs: settings.sfxIntensity === 'chaotic' ? 250 : 400,
+        maxCount: settings.sfxIntensity === 'subtle' ? 4 : settings.sfxIntensity === 'chaotic' ? 16 : 8,
+      });
+    }
+
+    // ── Face detection ────────────────────────────────────────────
+    const reframer = new Reframer();
+    if (settings.autoReframe) {
+      onProgress(22, 'Detecting faces…');
+      await reframer.init();
+      const interval = Math.max(0.5, duration / 30);
+      const times = [];
+      for (let t = 0; t < duration; t += interval) times.push(t);
+      const videoEl = await this._createVideoElement(file);
+      await reframer.analyseVideo(videoEl, times, (p) => {
+        onProgress(22 + p * 5, `Detecting faces… ${(p*100).toFixed(0)}%`);
+      });
+      URL.revokeObjectURL(videoEl.src);
+      videoEl.remove();
+    }
+
+    // ── Build edited audio ────────────────────────────────────────
+    let editedAudio = null;
+    if (audioBuffer) {
+      onProgress(28, 'Building audio track…');
+      editedAudio = await this._buildEditedAudio(audioBuffer, speechSegments, peaks, settings);
+    }
+
+    // ── Build canvas ──────────────────────────────────────────────
+    const outW = settings.resolution === 720 ? 720 : 1080;
+    const outH = settings.resolution === 720 ? 1280 : 1920;
+    const canvas = document.createElement('canvas');
+    canvas.width = outW; canvas.height = outH;
+    const ctx2d = canvas.getContext('2d', { alpha: false, willReadFrequently: false });
+    ctx2d.fillStyle = '#000';
+    ctx2d.fillRect(0, 0, outW, outH);
+
+    // ── Encode ────────────────────────────────────────────────────
+    onProgress(35, 'Encoding video…');
+    const output = new Output({ format: new Mp4OutputFormat(), target: new BufferTarget() });
+    const videoSource = new CanvasSource(canvas, {
+      codec: 'avc',
+      bitrate: settings.resolution === 720 ? 4_000_000 : 8_000_000,
+    });
+    output.addVideoTrack(videoSource, { frameRate: 30 });
+
+    let audioSource = null;
+    if (editedAudio) {
+      audioSource = new AudioBufferSource({ codec: 'aac', bitrate: 128_000 });
+      output.addAudioTrack(audioSource);
+    }
+
+    await output.start();
+
+    const videoSink = new VideoSampleSink(videoTrack);
+    let outputTime = 0, segmentIndex = 0, frameCount = 0, drawnFrames = 0;
+    const targetFPS = 30;
+    const frameInterval = 1 / targetFPS;
+    let lastDrawnTime = -1;
+
+    for await (const sample of videoSink.samples()) {
+      const srcTime = sample.timestamp;
+      while (segmentIndex < speechSegments.length && srcTime > speechSegments[segmentIndex].end) segmentIndex++;
+      if (segmentIndex >= speechSegments.length) { sample.close(); break; }
+      const seg = speechSegments[segmentIndex];
+      if (srcTime < seg.start) { sample.close(); continue; }
+
+      // Throttle to target FPS
+      if (srcTime - lastDrawnTime < frameInterval * 0.9) { sample.close(); continue; }
+      lastDrawnTime = srcTime;
+
+      // Get crop rect
+      const crop = settings.autoReframe
+        ? reframer.getCrop(srcTime, srcW, srcH)
+        : (() => {
+            const target = 9 / 16;
+            let cropW = srcW, cropH = srcH;
+            if (srcW / srcH > target) cropW = srcH * target;
+            else cropH = srcW / target;
+            return {
+              x: (srcW - cropW) / 2,
+              y: (srcH - cropH) / 2,
+              w: cropW,
+              h: cropH
+            };
+          })();
+
+      // Dynamic zoom near audio peaks
+      let zoom = 1.0;
+      if (settings.dynamicZoom && peaks.length) {
+        const nearest = peaks.reduce((b,p) => Math.abs(p-srcTime) < Math.abs(b-srcTime) ? p : b, 999);
+        const dist = Math.abs(nearest - srcTime);
+        if (dist < 0.6) zoom = 1.0 + 0.08 * (1 - dist/0.6);
+      }
+      const zoomW = crop.w / zoom, zoomH = crop.h / zoom;
+      const zoomX = crop.x + (crop.w - zoomW)/2;
+      const zoomY = crop.y + (crop.h - zoomH)/2;
+
+      // Draw frame
+      try {
+        const frameCanvas = this._sampleToCanvas(sample, srcW, srcH);
+        ctx2d.drawImage(frameCanvas, zoomX, zoomY, zoomW, zoomH, 0, 0, outW, outH);
+      } catch (e) {
+        ctx2d.fillStyle = '#000';
+        ctx2d.fillRect(0, 0, outW, outH);
+      }
+      sample.close();
+
+      await videoSource.add(outputTime, canvas);
+      outputTime += frameInterval;
+      drawnFrames++;
+
+      if (drawnFrames % 15 === 0) {
+        const pct = 35 + Math.min(50, drawnFrames / Math.max(1, duration * targetFPS) * 50);
+        onProgress(pct, `Encoding frame ${drawnFrames}…`);
+      }
+    }
+
+    // ── Add audio chunks ──────────────────────────────────────────
+    if (editedAudio && audioSource) {
+      onProgress(88, 'Muxing audio…');
+      const chunk = 1.0;
+      for (let t = 0; t < editedAudio.duration; t += chunk) {
+        const sub = this._sliceAudioBuffer(editedAudio, t, Math.min(t + chunk, editedAudio.duration));
+        await audioSource.add(sub);
+      }
+    }
+
+    onProgress(95, 'Finalising MP4…');
+    await videoSource.close();
+    if (audioSource) await audioSource.close();
+    const buffer = await output.finalize();
+
+    onProgress(100, 'Complete');
+    return new Blob([buffer], { type: 'video/mp4' });
+  }
+
+  /* ── helpers ─────────────────────────────────────────────────── */
+
+  _sampleToCanvas(sample, srcW, srcH) {
+    if (typeof sample.toCanvas === 'function') {
+      try { const c = sample.toCanvas(); if (c) return c; } catch(_) {}
+    }
+    if (typeof sample.draw === 'function') {
+      const c = new OffscreenCanvas(srcW, srcH);
+      const ctx = c.getContext('2d');
+      sample.draw(ctx, 0, 0, srcW, srcH);
+      return c;
+    }
+    throw new Error('Cannot extract frame from sample');
+  }
+
+  async _collectAudio(audioTrack, AudioBufferSink, duration) {
+    const chunks = [];
+    const sink = new AudioBufferSink(audioTrack);
+    for await (const { buffer } of sink.buffers()) chunks.push(buffer);
+    if (!chunks.length) return null;
+    const sampleRate = chunks[0].sampleRate;
+    const channels = chunks[0].numberOfChannels;
+    const totalLen = chunks.reduce((s,b) => s + b.length, 0);
+    const ctx = new OfflineAudioContext(channels, totalLen, sampleRate);
+    const out = ctx.createBuffer(channels, totalLen, sampleRate);
+    let off = 0;
+    for (const b of chunks) {
+      for (let c = 0; c < channels; c++) out.copyToChannel(b.getChannelData(c), c, off);
+      off += b.length;
+    }
+    return out;
+  }
+
+  async _buildEditedAudio(original, segments, peaks, settings) {
+    const sr = original.sampleRate;
+    const ch = original.numberOfChannels;
+    const editedDur = segments.reduce((s,x) => s + (x.end - x.start), 0);
+    const ctx = new OfflineAudioContext(ch, Math.ceil(editedDur * sr), sr);
+    const edited = ctx.createBuffer(ch, Math.ceil(editedDur * sr), sr);
+
+    let writePos = 0;
+    for (const seg of segments) {
+      const s = Math.floor(seg.start * sr), e = Math.floor(seg.end * sr), len = e - s;
+      if (len <= 0) continue;
+      for (let c = 0; c < ch; c++) {
+        edited.copyToChannel(original.getChannelData(c).subarray(s, e), c, writePos);
+      }
+      writePos += len;
+    }
+
+    if (settings.audioEnhancement) {
+      let max = 0;
+      for (let c = 0; c < ch; c++) {
+        const d = edited.getChannelData(c);
+        for (let i = 0; i < d.length; i++) if (Math.abs(d[i]) > max) max = Math.abs(d[i]);
+      }
+      if (max > 0.01) {
+        const gain = Math.min(0.95 / max, 4.0);
+        for (let c = 0; c < ch; c++) {
+          const d = edited.getChannelData(c);
+          for (let i = 0; i < d.length; i++) d[i] *= gain;
+        }
+      }
+    }
+
+    if (settings.soundEffects && peaks.length) {
+      const volume = Math.max(0, Math.min(1, Number(settings.sfxVolume ?? 0.7)));
+      const baseGain = (settings.sfxIntensity === 'subtle' ? 0.25
+                     : settings.sfxIntensity === 'chaotic' ? 0.6 : 0.4) * volume;
+      const cats = ['impact', 'pop', 'whoosh', 'riser', 'ding'];
+      for (const peakTime of peaks) {
+        const et = this._mapTime(peakTime, segments);
+        if (et === null) continue;
+        const cat = cats[Math.floor(Math.random() * cats.length)];
+        const sfx = await this.sfxSynth.render(cat);
+        const start = Math.floor(et * sr);
+        if (start >= edited.length) continue;
+        const dialogueEnergy = this._rmsAt(edited, start, sr * 0.2);
+        const duck = dialogueEnergy > 0.02 ? 0.3 : 1.0;
+        const g = baseGain * duck;
+        for (let c = 0; c < ch; c++) {
+          const sd = sfx.getChannelData(Math.min(c, sfx.numberOfChannels - 1));
+          const od = edited.getChannelData(c);
+          for (let i = 0; i < sd.length && start + i < od.length; i++) od[start + i] += sd[i] * g;
+        }
+      }
+    }
+
+    // Fades
+    const fadeLen = Math.floor(0.01 * sr);
+    for (let c = 0; c < ch; c++) {
+      const d = edited.getChannelData(c);
+      for (let i = 0; i < fadeLen; i++) {
+        const g = i / fadeLen;
+        d[i] *= g;
+        d[d.length - 1 - i] *= g;
+      }
+    }
+    return edited;
+  }
+
+  _mapTime(t, segments) {
+    let acc = 0;
+    for (const seg of segments) {
+      if (t >= seg.start && t <= seg.end) return acc + (t - seg.start);
+      acc += seg.end - seg.start;
+    }
+    return null;
+  }
+
+  _rmsAt(buffer, start, win) {
+    const d = buffer.getChannelData(0);
+    let sum = 0, n = 0;
+    for (let i = start; i < Math.min(start + win, d.length); i++) { sum += d[i]*d[i]; n++; }
+    return n ? Math.sqrt(sum/n) : 0;
+  }
+
+  _sliceAudioBuffer(buffer, start, end) {
+    const sr = buffer.sampleRate, ch = buffer.numberOfChannels;
+    const s = Math.floor(start*sr), e = Math.min(Math.floor(end*sr), buffer.length);
+    const len = Math.max(0, e - s);
+    const ctx = new OfflineAudioContext(ch, Math.max(1, len), sr);
+    const out = ctx.createBuffer(ch, Math.max(1, len), sr);
+    for (let c = 0; c < ch; c++) out.copyToChannel(buffer.getChannelData(c).subarray(s, s + len), c);
+    return out;
+  }
+
+  _createVideoElement(file) {
+    return new Promise((resolve, reject) => {
+      const v = document.createElement('video');
+      v.muted = true; v.playsInline = true; v.preload = 'auto';
+      v.style.cssText = 'position:fixed;left:-9999px;top:-9999px;width:1px;height:1px';
+      document.body.appendChild(v);
+      v.src = URL.createObjectURL(file);
+      v.onloadedmetadata = () => resolve(v);
+      v.onerror = () => reject(new Error('Could not load video element'));
+    });
+  }
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   UI
+   ═══════════════════════════════════════════════════════════════════════════ */
+class UI {
+  constructor(app) {
+    this.app = app;
+    this.$ = s => document.querySelector(s);
+    this.$$ = s => document.querySelectorAll(s);
+    this.screens = {
+      dashboard: this.$('#dashboard'),
+      editor: this.$('#editor'),
+      settings: this.$('#settings'),
+    };
+    this.previewCanvas = this.$('#previewCanvas');
+    this.previewCtx = this.previewCanvas.getContext('2d');
+    this._previewAnim = null;
+    this._previewVideo = null;
+  }
+
+  bindEvents() {
+    this.$('#fileInput').addEventListener('change', e => {
+      this.app.addFiles(Array.from(e.target.files));
+      e.target.value = '';
+    });
+    this.$('#batchBtn').addEventListener('click', () => this.$('#fileInput').click());
+    this.$$('.nav-btn').forEach(btn => btn.addEventListener('click', () => this.navigate(btn.dataset.screen)));
+    this.$('#backBtn').addEventListener('click', () => this.navigate('dashboard'));
+    this.$('#backFromSettings').addEventListener('click', () => this.navigate('dashboard'));
+    this.$('#exportBtn').addEventListener('click', () => this.app.exportCurrent());
+    this.$('#saveSettings').addEventListener('click', () => this.app.saveSettings(this.readSettingsForm()));
+    this.$('#intensitySel').addEventListener('change', e => {
+      this.app.settings.sfxIntensity = e.target.value;
+      this.app.storage.saveSettings(this.app.settings);
+      this.toast(`SFX intensity: ${e.target.value}`);
+    });
+    this.$('#sfxVol').addEventListener('input', e => {
+      this.app.settings.sfxVolume = parseInt(e.target.value) / 100;
+      this.app.storage.saveSettings(this.app.settings);
+    });
+    this.$('#playPauseBtn').addEventListener('click', () => this.togglePlayback());
+    this.$('#compareBtn').addEventListener('click', () => this.toast('Compare toggle — future enhancement'));
+    this.$('#undoBtn').addEventListener('click', () => this.toast('Undo — no manual cuts tracked in auto mode'));
+    this.$('#redoBtn').addEventListener('click', () => this.toast('Redo — no manual cuts tracked in auto mode'));
+    this.$('#seekBar').addEventListener('input', e => {
+      const v = this._previewVideo;
+      if (v && Number.isFinite(v.duration) && v.duration > 0) {
+        v.currentTime = (Number(e.target.value) / 1000) * v.duration;
+      }
+    });
+  }
+
+  navigate(screen) {
+    Object.values(this.screens).forEach(s => s.classList.remove('active'));
+    if (this.screens[screen]) this.screens[screen].classList.add('active');
+    this.$$('.nav-btn').forEach(b => b.classList.toggle('active', b.dataset.screen === screen));
+    if (screen === 'settings') this.applySettings(this.app.settings);
+  }
+
+  applySettings(s) {
+    this.$('#setDeadSpace').checked = s.deadSpaceRemoval;
+    this.$('#setZoom').checked = s.dynamicZoom;
+    this.$('#setReframe').checked = s.autoReframe;
+    this.$('#setSfx').checked = s.soundEffects;
+    this.$('#setAudioEnh').checked = s.audioEnhancement;
+    this.$('#setSubs').checked = s.subtitles;
+    this.$('#setIntensity').value = s.sfxIntensity;
+    this.$('#setResolution').value = String(s.resolution);
+    this.$('#intensitySel').value = s.sfxIntensity;
+    this.$('#sfxVol').value = Math.round(Math.max(0, Math.min(1, Number(s.sfxVolume ?? 0.7))) * 100);
+  }
+
+  readSettingsForm() {
+    return {
+      deadSpaceRemoval: this.$('#setDeadSpace').checked,
+      dynamicZoom: this.$('#setZoom').checked,
+      autoReframe: this.$('#setReframe').checked,
+      soundEffects: this.$('#setSfx').checked,
+      audioEnhancement: this.$('#setAudioEnh').checked,
+      subtitles: this.$('#setSubs').checked,
+      sfxIntensity: this.$('#setIntensity').value,
+      resolution: parseInt(this.$('#setResolution').value),
+    };
+  }
+
+  renderQueue() {
+    const q = this.app.queue;
+    this.$('#statQueue').textContent = q.filter(j => j.status === 'queued').length;
+    this.$('#statDone').textContent = q.filter(j => j.status === 'done').length;
+    this.$('#statFail').textContent = q.filter(j => j.status === 'failed').length;
+    this.renderProjectList(q, this.$('#recentList'));
+  }
+
+  renderProjectList(items, container) {
+    if (!items.length) {
+      container.innerHTML = '<p style="color:var(--text-dim);font-size:13px;padding:8px 0">No items yet. Import videos to begin.</p>';
+      return;
+    }
+    container.innerHTML = items.map(item => `
+      <div class="project-item">
+        <div class="project-thumb">🎬</div>
+        <div class="project-info">
+          <h3>${this._esc(item.name)}</h3>
+          <p>${this._size(item.size)} · ${item.status}</p>
+        </div>
+        <span class="status-pill status-${item.status}">${item.status.toUpperCase()}</span>
+      </div>
+    `).join('');
+  }
+
+  addExportedItem(job) {
+    const list = this.$('#exportList');
+    const div = document.createElement('div');
+    div.className = 'project-item';
+    div.innerHTML = `
+      <div class="project-thumb">✅</div>
+      <div class="project-info">
+        <h3>${this._esc(job.name)}</h3>
+        <p>${this._size(job.resultBlob.size)} · Ready</p>
+      </div>
+      <button class="btn btn-sm" type="button">Download</button>
+    `;
+    div.querySelector('button').addEventListener('click', () => {
+      const name = job.name.replace(/\.[^.]+$/, '');
+      this.downloadBlob(job.resultBlob, `clipforge_${name}.mp4`);
+    });
+    list.prepend(div);
+  }
+
+  showEditor(job) {
+    this.navigate('editor');
+    this.$('#editorTitle').textContent = job.name;
+    this.updateProgress(0, 'Starting…');
+    this.$('#timeline').innerHTML = '';
+    this._currentJob = job;
+  }
+
+  updateProgress(pct, label) {
+    this.$('#progressFill').style.width = `${Math.min(100, pct)}%`;
+    this.$('#progressLabel').textContent = label;
+  }
+
+  loadPreview(blob) {
+    const url = URL.createObjectURL(blob);
+    if (this._previewVideo) {
+      this._previewVideo.pause();
+      URL.revokeObjectURL(this._previewVideo.src);
+      this._previewVideo.remove();
+    }
+    const v = document.createElement('video');
+    v.src = url; v.muted = false; v.playsInline = true;
+    v.style.cssText = 'position:fixed;left:-9999px;top:-9999px;width:1px;height:1px';
+    document.body.appendChild(v);
+    this._previewVideo = v;
+    v.onloadedmetadata = () => this._drawPreviewFrame();
+    v.addEventListener('timeupdate', () => this._drawPreviewFrame());
+    v.addEventListener('seeked', () => this._drawPreviewFrame());
+    v.addEventListener('play', () => this._startPreviewLoop());
+    v.addEventListener('pause', () => {
+      if (this._previewAnim) cancelAnimationFrame(this._previewAnim);
+      this._previewAnim = null;
+      this._drawPreviewFrame();
+    });
+    this.$('#playPauseBtn').textContent = '▶️';
+  }
+
+  _drawPreviewFrame() {
+    const v = this._previewVideo;
+    if (!v || v.readyState < 2) return;
+    this.previewCtx.drawImage(v, 0, 0, this.previewCanvas.width, this.previewCanvas.height);
+    const duration = Number.isFinite(v.duration) && v.duration > 0 ? v.duration : 0;
+    this.$('#seekBar').value = duration ? (v.currentTime / duration) * 1000 : 0;
+    this.$('#timeLabel').textContent = this._time(v.currentTime || 0);
+  }
+
+  _startPreviewLoop() {
+    if (this._previewAnim) cancelAnimationFrame(this._previewAnim);
+    const draw = () => {
+      this._drawPreviewFrame();
+      if (this._previewVideo && !this._previewVideo.paused && !this._previewVideo.ended) {
+        this._previewAnim = requestAnimationFrame(draw);
+      } else {
+        this._previewAnim = null;
+      }
+    };
+    this._previewAnim = requestAnimationFrame(draw);
+  }
+
+  togglePlayback() {
+    if (!this._previewVideo) return;
+    if (this._previewVideo.paused) {
+      this._previewVideo.play().then(() => {
+        this.$('#playPauseBtn').textContent = '⏸️';
+      }).catch(err => {
+        this.$('#playPauseBtn').textContent = '▶️';
+        this.toast(`Playback failed: ${err.message || 'browser blocked playback'}`);
+      });
+    } else {
+      this._previewVideo.pause();
+      this.$('#playPauseBtn').textContent = '▶️';
+    }
+  }
+
+  downloadBlob(blob, filename) {
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url; a.download = filename;
+    document.body.appendChild(a); a.click();
+    setTimeout(() => { URL.revokeObjectURL(url); a.remove(); }, 1500);
+  }
+
+  toast(msg) {
+    const el = this.$('#toast');
+    el.textContent = msg;
+    el.classList.add('show');
+    clearTimeout(this._toastTimer);
+    this._toastTimer = setTimeout(() => el.classList.remove('show'), 3200);
+  }
+
+  async loadRecentProjects() {
+    try {
+      const results = await this.app.storage.listResults();
+      if (!results.length) return;
+      const list = this.$('#exportList');
+      list.innerHTML = '';
+      for (const r of results.slice(-20)) {
+        this.addExportedItem({ id: r.id, name: r.name, resultBlob: r.blob });
+      }
+    } catch(_) {}
+  }
+
+  _size(b) { return b < 1048576 ? `${(b/1024).toFixed(0)} KB` : `${(b/1048576).toFixed(1)} MB`; }
+  _time(s) { const m = Math.floor(s/60), x = Math.floor(s%60); return `${m}:${String(x).padStart(2,'0')}`; }
+  _esc(s) { return String(s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])); }
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   APP
+   ═══════════════════════════════════════════════════════════════════════════ */
+class App {
+  constructor() {
+    this.storage = new Storage();
+    this.ui = new UI(this);
+    this.pipeline = new VideoPipeline(this);
+    this.queue = [];
+    this.currentJob = null;
+    this.settings = this.storage.loadSettings();
+  }
+
+  async init() {
+    this.ui.applySettings(this.settings);
+    this.ui.bindEvents();
+    await this.ui.loadRecentProjects();
+    this.ui.navigate('dashboard');
+    console.log('CLIPFORGE ready. WebCodecs:', hasWebCodecs, 'Secure:', isSecure);
+  }
+
+  async addFiles(files) {
+    if (!files.length) return;
+    const accepted = [];
+    for (const file of files) {
+      if (!file.type.startsWith('video/')) { this.ui.toast(`Skipped non-video: ${file.name}`); continue; }
+      if (file.size > 500 * 1024 * 1024) { this.ui.toast(`Too large (>500 MB): ${file.name}`); continue; }
+      const job = {
+        id: crypto.randomUUID(),
+        file, name: file.name, size: file.size,
+        status: 'queued', progress: 0, resultBlob: null, error: null,
+      };
+      this.queue.push(job);
+      accepted.push(job);
+    }
+    this.ui.renderQueue();
+    if (accepted.length) this.ui.toast(`${accepted.length} video(s) added.`);
+    if (!this.currentJob) this.processNext();
+  }
+
+  async processNext() {
+    const job = this.queue.find(j => j.status === 'queued');
+    if (!job) { this.ui.renderQueue(); return; }
+    this.currentJob = job;
+    job.status = 'processing';
+    this.ui.renderQueue();
+    this.ui.showEditor(job);
+
+    try {
+      const blob = await this.pipeline.processVideo(job, this.settings, (p, l) => {
+        job.progress = p;
+        this.ui.updateProgress(p, l);
+      });
+      job.resultBlob = blob;
+      job.status = 'done';
+      this.ui.updateProgress(100, 'Complete');
+      this.ui.loadPreview(blob);
+      await this.storage.saveResult(job.id, blob, job.name);
+      this.ui.toast(`✅ ${job.name} ready.`);
+      this.ui.addExportedItem(job);
+    } catch (err) {
+      console.error('Processing failed:', err);
+      job.status = 'failed';
+      job.error = err.message || String(err);
+      this.ui.toast(`❌ ${job.name}: ${job.error}`);
+      this.ui.updateProgress(0, `Failed: ${job.error}`);
+    }
+
+    this.currentJob = null;
+    this.ui.renderQueue();
+    setTimeout(() => this.processNext(), 100);
+  }
+
+  async exportCurrent() {
+    if (!this.currentJob) {
+      // No active job — try most recent done job
+      const done = this.queue.filter(j => j.status === 'done' && j.resultBlob).pop();
+      if (done) { this.ui.downloadBlob(done.resultBlob, `clipforge_${done.name.replace(/\.[^.]+$/, '')}.mp4`); return; }
+      this.ui.toast('No completed video yet.');
+      return;
+    }
+    const job = this.currentJob;
+    if (!job.resultBlob) { this.ui.toast('Still processing…'); return; }
+    this.ui.downloadBlob(job.resultBlob, `clipforge_${job.name.replace(/\.[^.]+$/, '')}.mp4`);
+  }
+
+  saveSettings(s) {
+    this.settings = { ...this.settings, ...s };
+    this.storage.saveSettings(this.settings);
+    this.ui.toast('Settings saved.');
+  }
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   BOOT
+   ═══════════════════════════════════════════════════════════════════════════ */
+try {
+  const app = new App();
+  window.__clipforge = app; // debug hook
+  await app.init();
+} catch (err) {
+  console.error('Startup failed:', err);
+  document.body.insertAdjacentHTML('afterbegin',
+    `<div class="notice">❌ Startup error: ${err.message}<br>Use Chrome 94+ over HTTPS or localhost.</div>`);
+}
+</script>
+</body>
+</html>
